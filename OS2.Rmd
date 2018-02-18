@@ -1,0 +1,94 @@
+---
+title: "Options stategy"
+author: "LZ"
+date: "April 4, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<h6>Для работы нужны  пакеты  ggplot2, rmarkdown, knitr </h6>
+
+```{r , echo=FALSE}
+library(knitr)
+```
+Создадим таблицу для данных
+
+```{r , echo= TRUE } 
+buy_sell = c("long", "short","short","long"); # например для butterfly спреда - ("long", "short","short","long")
+put_call_stock = c("call", "call","call","call"); # для  butterfly спреда ("call", "call","call","call")
+strike = c(50,60,60,70)
+premia=c(5,3,3,2)
+dt=data.frame(buy_sell,put_call_stock,strike,premia)
+dt
+```
+
+Создадим цену спот (ось обсцисса), таблицу для стоимостей и первоначальное значение для стоимости опционов
+```{r , echo=TRUE}
+st=c(1:120)
+kt=data.frame(option1=0,option2=0,option3=0,option4=0,st)
+head(kt,15)
+```
+
+Расчитаем стоимость каждого онциона используя оператор цикла <for>. Зададим первоначальное значение для i и j. Дадим названия рядам.
+```{r , echo= TRUE }
+i=1
+j=1
+for(j in 1:length(buy_sell)) 
+{
+  for(i in 1:length(st))
+    {
+  kt[i,j] <- ifelse(
+    
+    buy_sell[j]=="long"&& put_call_stock[j]=="call", max(-premia[j],-premia[j]+st[i]-strike[j]),
+    ifelse(
+      
+      buy_sell[j]=="short"&& put_call_stock[j]=="call", min(premia[j],premia[j]-st[i]+strike[j]), 
+      ifelse(
+        
+        buy_sell[j]=="long"&& put_call_stock[j]=="put", max(-premia[j],-premia[j]-st[i]+strike[j]),
+        ifelse(
+          
+          buy_sell[j]=="short"&& put_call_stock[j]=="put", min(premia[j],premia[j]+st[i]-strike[j]),
+          ifelse(
+            
+            buy_sell[j]=="long"&& put_call_stock[j]=="stock",st[i]-strike[j],
+            ifelse(
+              
+              buy_sell[j]=="short"&& put_call_stock[j]=="stock", -st[i]+strike[j],NA
+            ))))))
+i = i + 1
+}
+j=j+1
+}
+names(kt)=c(paste(buy_sell[1], put_call_stock[1]),paste(buy_sell[2], put_call_stock[2]),paste(buy_sell[3], put_call_stock[3]),paste(buy_sell[4], put_call_stock[4]),'Spot_Price')
+head(kt,15)
+```
+
+Создадим суммарную стоумость опционной стратегии и добавим в нашу таблицу
+```{r , echo=TRUE}
+
+sumpayoff=0
+for(i in 1:length(st))
+{
+  sumpayoff[i]=sum(kt[i,1],kt[i,2],kt[i,3],kt[i,4],  na.rm = TRUE)
+    i = i+1
+}
+kt=data.frame(kt, sumpayoff)
+names(kt)=c(paste(buy_sell[1], put_call_stock[1]),paste(buy_sell[2], put_call_stock[2]),paste(buy_sell[3], put_call_stock[3]),paste(buy_sell[4], put_call_stock[4]),'Spot_Price', "Sumpayoff")
+head(kt,15)
+```
+
+Получим график стратегии
+```{r , echo=TRUE}
+library(ggplot2)
+ggplot(data=kt, aes(kt[,5]))+
+  geom_line(aes(y=kt[,1]), colour="blue",lty=2, lwd=1)+
+  geom_line(aes(y=kt[,2]), colour="orange1",lty=4,lwd=1)+
+  geom_line(aes(y=kt[,3]), colour="gold",lty=2,lwd=1)+
+  geom_line(aes(y=kt[,4]), colour="forestgreen", lty=6,lwd=1)+
+  geom_line(aes(y=kt$Sumpayoff), colour="firebrick1", lwd=1.2)+ ylab("Value") + xlab("Spot price at Expiration")
+```
+<h4>УРА</h4>
